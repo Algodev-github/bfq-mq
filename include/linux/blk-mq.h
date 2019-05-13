@@ -57,6 +57,10 @@ typedef __u32 __bitwise req_flags_t;
 #define RQF_TIMED_OUT		((__force req_flags_t)(1 << 21))
 /* queue has elevator attached */
 #define RQF_ELV			((__force req_flags_t)(1 << 22))
+/* DEBUG: rq in bfq-dev dispatch list */
+#define RQF_DISP_LIST   ((__force req_flags_t)(1 << 23))
+/* DEBUG: rq had get_rq_private executed on it */
+#define RQF_GOT ((__force req_flags_t)(1 << 24))
 
 /* flags that prevent us from merging requests: */
 #define RQF_NOMERGE_FLAGS \
@@ -788,7 +792,7 @@ static inline int blk_mq_request_completed(struct request *rq)
 }
 
 /*
- * 
+ *
  * Set the state to complete when completing a request from inside ->queue_rq.
  * This is used by drivers that want to ensure special complete actions that
  * need access to the request are called on failure, e.g. by nvme for
