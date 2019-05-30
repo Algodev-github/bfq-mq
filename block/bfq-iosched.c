@@ -5437,6 +5437,9 @@ static void bfq_update_has_short_ttime(struct bfq_data *bfqd,
 
 	state_changed = has_short_ttime != bfq_bfqq_has_short_ttime(bfqq);
 
+	bfq_log_bfqq(bfqd, bfqq, "has_short_ttime %d, changed %d",
+		     has_short_ttime, state_changed);
+
 	if (has_short_ttime)
 		bfq_mark_bfqq_has_short_ttime(bfqq);
 	else
