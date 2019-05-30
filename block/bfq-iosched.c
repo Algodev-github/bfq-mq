@@ -2090,6 +2090,9 @@ static void bfq_add_request(struct request *rq)
 				    &bfqd->last_completed_rq_bfqq->woken_list);
 
 				bfq_clear_bfqq_has_waker(bfqq);
+				bfq_log_bfqq(bfqd, bfqq,
+					     "tentative waker: %d",
+					     bfqq->waker_bfqq->pid);
 			} else if (bfqd->last_completed_rq_bfqq ==
 				   bfqq->waker_bfqq &&
 				   !bfq_bfqq_has_waker(bfqq)) {
@@ -2098,6 +2101,8 @@ static void bfq_add_request(struct request *rq)
 				 * seen for the second time
 				 */
 				bfq_mark_bfqq_has_waker(bfqq);
+				bfq_log_bfqq(bfqd, bfqq, "has waker set to %d",
+					     bfqq->waker_bfqq->pid);
 			}
 		}
 
@@ -4809,7 +4814,12 @@ check_queue:
 					      bfqq->waker_bfqq) <=
 			   bfq_bfqq_budget_left(bfqq->waker_bfqq)
 			) {
+			bfq_log_bfqq(bfqd, bfqq,
+				     "choosing directly the waker queue %d",
+				     bfqq->waker_bfqq->pid);
 			bfqq = bfqq->waker_bfqq;
+			bfq_log_bfqq(bfqd, bfqq,
+				     "chosen directly this waker queue");
 		} else if (!idling_boosts_thr_without_issues(bfqd, bfqq) &&
 			 (bfqq->wr_coeff == 1 || bfqd->wr_busy_queues > 1 ||
 			  !bfq_bfqq_has_short_ttime(bfqq))) {
