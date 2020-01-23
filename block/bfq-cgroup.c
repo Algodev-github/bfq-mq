@@ -330,7 +330,7 @@ static void bfqg_put(struct bfq_group *bfqg)
 
 	BFQ_BUG_ON(bfqg->ref < 0);
 	if (bfqg->ref == 0) {
-		BFQ_BUG_ON(bfqg->entity.on_st);
+		BFQ_BUG_ON(bfqg->entity.on_st_or_in_serv);
 		kfree(bfqg);
 	}
 }
@@ -647,7 +647,8 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 	struct bfq_entity *entity = &bfqq->entity;
 
 	BFQ_BUG_ON(!bfq_bfqq_busy(bfqq) && !RB_EMPTY_ROOT(&bfqq->sort_list));
-	BFQ_BUG_ON(!RB_EMPTY_ROOT(&bfqq->sort_list) && !entity->on_st);
+	BFQ_BUG_ON(!RB_EMPTY_ROOT(&bfqq->sort_list) &&
+		   !entity->on_st_or_in_serv);
 	BFQ_BUG_ON(!bfq_bfqq_busy(bfqq) && bfqq == bfqd->in_service_queue);
 
 	/* If bfqq is empty, then bfq_bfqq_expire also invokes
@@ -660,7 +661,7 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 		bfq_bfqq_expire(bfqd, bfqd->in_service_queue,
 				false, BFQQE_PREEMPTED);
 
-	BFQ_BUG_ON(entity->on_st && !bfq_bfqq_busy(bfqq)
+	BFQ_BUG_ON(entity->on_st_or_in_serv && !bfq_bfqq_busy(bfqq)
 	    && &bfq_entity_service_tree(entity)->idle !=
 	       entity->tree);
 
@@ -672,7 +673,7 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 
 	if (bfq_bfqq_busy(bfqq))
 		bfq_deactivate_bfqq(bfqd, bfqq, false, false);
-	else if (entity->on_st) {
+	else if (entity->on_st_or_in_serv) {
 		BFQ_BUG_ON(&bfq_entity_service_tree(entity)->idle !=
 		       entity->tree);
 		bfq_put_idle_entity(bfq_entity_service_tree(entity), entity);
@@ -696,7 +697,7 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 
 	if (!bfqd->in_service_queue && !bfqd->rq_in_driver)
 		bfq_schedule_dispatch(bfqd);
-	BFQ_BUG_ON(entity->on_st && !bfq_bfqq_busy(bfqq)
+	BFQ_BUG_ON(entity->on_st_or_in_serv && !bfq_bfqq_busy(bfqq)
 	       && &bfq_entity_service_tree(entity)->idle !=
 	       entity->tree);
 	/* release extra ref taken above */
