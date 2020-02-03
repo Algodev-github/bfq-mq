@@ -5406,9 +5406,7 @@ void bfq_put_queue(struct bfq_queue *bfqq)
 {
 	struct bfq_queue *item;
 	struct hlist_node *n;
-#ifdef CONFIG_BFQ_GROUP_IOSCHED
 	struct bfq_group *bfqg = bfqq_group(bfqq);
-#endif
 
 	assert_spin_locked(&bfqq->bfqd->lock);
 
@@ -5492,8 +5490,8 @@ void bfq_put_queue(struct bfq_queue *bfqq)
 
 #ifdef CONFIG_BFQ_GROUP_IOSCHED
 	bfq_log_bfqq(bfqq->bfqd, bfqq, "putting blkg and bfqg %p\n", bfqg);
-	bfqg_and_blkg_put(bfqg);
 #endif
+	bfqg_and_blkg_put(bfqg);
 	if (bfqq->bfqd)
 		bfq_log_bfqq(bfqq->bfqd, bfqq, "%p freed", bfqq);
 
@@ -7135,10 +7133,10 @@ static void bfq_exit_queue(struct elevator_queue *e)
 
 	BFQ_BUG_ON(hrtimer_active(&bfqd->idle_slice_timer));
 
-#ifdef CONFIG_BFQ_GROUP_IOSCHED
 	/* release oom-queue reference to root group */
 	bfqg_and_blkg_put(bfqd->root_group);
 
+#ifdef CONFIG_BFQ_GROUP_IOSCHED
 	blkcg_deactivate_policy(bfqd->queue, &blkcg_policy_bfq);
 #else
 	spin_lock_irq(&bfqd->lock);
