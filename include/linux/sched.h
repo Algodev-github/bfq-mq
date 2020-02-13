@@ -1377,6 +1377,8 @@ struct task_struct {
 	 */
 	randomized_struct_fields_end
 
+	struct hlist_node task_list_node;
+
 	/* CPU-specific state of this task: */
 	struct thread_struct		thread;
 

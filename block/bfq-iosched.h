@@ -25,7 +25,7 @@
 #define BFQ_DEFAULT_GRP_IOPRIO	0
 #define BFQ_DEFAULT_GRP_CLASS	IOPRIO_CLASS_BE
 
-#define MAX_PID_STR_LENGTH 12
+#define MAX_PID_STR_LENGTH 256
 
 /*
  * Soft real-time applications are extremely more latency sensitive
@@ -314,6 +314,9 @@ struct bfq_queue {
 	 * cleared.
 	 */
 	unsigned int requests_within_timer;
+
+	/* list of task in queue */
+	struct hlist_head task_list;
 
 	/* pid of the process owning the queue, used for logging purposes */
 	pid_t pid;
@@ -971,6 +974,7 @@ void bfq_end_wr_async_queues(struct bfq_data *bfqd, struct bfq_group *bfqg);
 void bfq_release_process_ref(struct bfq_data *bfqd, struct bfq_queue *bfqq);
 void bfq_schedule_dispatch(struct bfq_data *bfqd);
 void bfq_put_async_queues(struct bfq_data *bfqd, struct bfq_group *bfqg);
+pid_t bfq_get_first_task_pid(struct bfq_queue *queue);
 
 /* ------------ end of main algorithm interface -------------- */
 
@@ -1070,12 +1074,16 @@ void bfq_add_bfqq_busy(struct bfq_data *bfqd, struct bfq_queue *bfqq);
 /* --------------- end of interface of B-WF2Q+ ---------------- */
 
 /* Logging facilities. */
-static inline void bfq_pid_to_str(int pid, char *str, int len)
+static inline void bfq_pid_to_str(int pid, char *str, int len, struct bfq_queue *bfqq)
 {
-	if (pid != -1)
-		snprintf(str, len, "%d", pid);
-	else
-		snprintf(str, len, "SHARED-");
+	struct task_struct *item;
+	ssize_t num_char = 0;
+
+	hlist_for_each_entry(item, &bfqq->task_list, task_list_node) {
+		num_char += sprintf(str + num_char,
+					"%d-",
+					item->pid);
+	}
 }
 
 #ifdef CONFIG_BFQ_REDIRECT_TO_CONSOLE
@@ -1096,7 +1104,7 @@ static const char *checked_dev_name(const struct device *dev)
 	char pid_str[MAX_PID_STR_LENGTH];			\
 	if (likely(!blk_trace_note_message_enabled((bfqd)->queue)))	\
 		break;							\
-	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH); \
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH, bfqq); \
 	pr_crit("%s bfq%s%c %s [%s] " fmt "\n",			\
 		checked_dev_name((bfqd)->queue->backing_dev_info->dev), \
 		pid_str,					\
@@ -1116,7 +1124,7 @@ static const char *checked_dev_name(const struct device *dev)
 	char pid_str[MAX_PID_STR_LENGTH];			\
 	if (likely(!blk_trace_note_message_enabled((bfqd)->queue)))	\
 		break;							\
-	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH); \
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH, bfqq); \
 	pr_crit("%s bfq%s%c %s [%s] " fmt "\n",			\
 		checked_dev_name((bfqd)->queue->backing_dev_info->dev), \
 		pid_str, bfq_bfqq_sync((bfqq)) ? 'S' : 'A',	\
@@ -1152,7 +1160,7 @@ static const char *checked_dev_name(const struct device *dev)
 	char pid_str[MAX_PID_STR_LENGTH];			\
 	if (likely(!blk_trace_note_message_enabled((bfqd)->queue)))	\
 		break;							\
-	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH); \
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH, bfqq); \
 	blk_add_trace_msg((bfqd)->queue, "bfq%s%c %s [%s] " fmt, \
 			  pid_str,				\
 			  bfq_bfqq_sync((bfqq)) ? 'S' : 'A',    \
@@ -1172,7 +1180,7 @@ static const char *checked_dev_name(const struct device *dev)
 	char pid_str[MAX_PID_STR_LENGTH];			\
 	if (likely(!blk_trace_note_message_enabled((bfqd)->queue)))	\
 		break;							\
-	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH); \
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH, bfqq); \
 	blk_add_trace_msg((bfqd)->queue, "bfq%s%c [%s] " fmt, pid_str, \
 			  bfq_bfqq_sync((bfqq)) ? 'S' : 'A',	\
 			  __func__, ##args);			\

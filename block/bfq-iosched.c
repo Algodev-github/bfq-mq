@@ -594,9 +594,10 @@ bfq_rq_pos_tree_lookup(struct bfq_data *bfqd, struct rb_root *root,
 	if (rb_link)
 		*rb_link = p;
 
-	bfq_log(bfqd, "%llu: returning %d",
-		(unsigned long long) sector,
-		bfqq ? bfqq->pid : 0);
+	if (bfqq != NULL)
+		bfq_log(bfqd, "%llu: returning %d",
+			(unsigned long long) sector,
+			bfqq ? bfq_get_first_task_pid(bfqq) : 0);
 
 	return bfqq;
 }
@@ -2865,7 +2866,7 @@ bfq_setup_merge(struct bfq_queue *bfqq, struct bfq_queue *new_bfqq)
 		return NULL;
 
 	bfq_log_bfqq(bfqq->bfqd, bfqq, "scheduling merge with queue %d",
-		new_bfqq->pid);
+		bfq_get_first_task_pid(new_bfqq));
 
 	/*
 	 * Merging is just a redirection: the requests of the process
@@ -2898,7 +2899,7 @@ static bool bfq_may_be_close_cooperator(struct bfq_queue *bfqq,
 	if (bfq_too_late_for_merging(new_bfqq)) {
 		bfq_log_bfqq(bfqq->bfqd, bfqq,
 			     "too late for bfq%d to be merged",
-				new_bfqq->pid);
+				bfq_get_first_task_pid(new_bfqq));
 		return false;
 	}
 
@@ -3127,8 +3128,11 @@ static void
 bfq_merge_bfqqs(struct bfq_data *bfqd, struct bfq_io_cq *bic,
 		struct bfq_queue *bfqq, struct bfq_queue *new_bfqq)
 {
+	struct task_struct *item;
+	struct hlist_node *n;
+
 	bfq_log_bfqq(bfqd, bfqq, "merging with queue %lu",
-		(unsigned long)new_bfqq->pid);
+		(unsigned long)bfq_get_first_task_pid(new_bfqq));
 
 	BFQ_BUG_ON(new_bfqq == &bfqd->oom_bfqq);
 
@@ -3164,7 +3168,7 @@ bfq_merge_bfqqs(struct bfq_data *bfqd, struct bfq_io_cq *bic,
 		new_bfqq->entity.prio_changed = 1;
 		bfq_log_bfqq(bfqd, new_bfqq,
 			     "wr start after merge with %d, rais_max_time %u",
-			     bfqq->pid,
+			     bfq_get_first_task_pid(bfqq),
 			     jiffies_to_msecs(bfqq->wr_cur_max_time));
 	}
 
@@ -3206,8 +3210,16 @@ bfq_merge_bfqqs(struct bfq_data *bfqd, struct bfq_io_cq *bic,
 	 * We mark such a queue with a pid -1, and then print SHARED instead of
 	 * a pid in logging messages.
 	 */
-	new_bfqq->pid = -1;
 	bfqq->bic = NULL;
+
+	/*
+	 * move task_list_node from its current list to that of new_bfqq
+	 */
+	hlist_for_each_entry_safe(item, n, &bfqq->task_list, task_list_node) {
+		hlist_del_init(&item->task_list_node);
+		hlist_add_head(&item->task_list_node, &new_bfqq->task_list);
+	}
+
 	bfq_release_process_ref(bfqd, bfqq);
 }
 
@@ -5082,7 +5094,8 @@ check_queue:
 		    bfq_bfqq_budget_left(async_bfqq)) {
 			bfq_log_bfqq(bfqd, bfqq,
 				     "choosing directly the async queue %d",
-				     bfqq->bic->bfqq[0]->pid);
+				     bfq_get_first_task_pid(
+					     bfqq->bic->bfqq[0]));
 			BUG_ON(bfqq->bic->bfqq[0] == bfqq);
 			bfqq = bfqq->bic->bfqq[0];
 			bfq_log_bfqq(bfqd, bfqq,
@@ -5096,7 +5109,7 @@ check_queue:
 			) {
 			bfq_log_bfqq(bfqd, bfqq,
 				     "choosing directly the waker queue %d",
-				     bfqq->waker_bfqq->pid);
+				     bfq_get_first_task_pid(bfqq->waker_bfqq));
 			BUG_ON(bfqq->waker_bfqq == bfqq);
 			bfqq = bfqq->waker_bfqq;
 			bfq_log_bfqq(bfqd, bfqq,
@@ -5115,7 +5128,7 @@ check_queue:
 			if (new_bfqq)
 				bfq_log_bfqq(bfqd, bfqq,
 					"chosen the queue %d for injection",
-					new_bfqq->pid);
+					bfq_get_first_task_pid(new_bfqq));
 			bfqq = new_bfqq;
 		} else {
 			bfqq = NULL;
@@ -5636,6 +5649,7 @@ static void bfq_exit_bfqq(struct bfq_data *bfqd, struct bfq_queue *bfqq)
 
 	bfq_put_cooperator(bfqq);
 
+	hlist_del_init(&current->task_list_node);
 	bfq_release_process_ref(bfqd, bfqq);
 }
 
@@ -5744,6 +5758,7 @@ static void bfq_check_ioprio_change(struct bfq_io_cq *bic, struct bio *bio)
 
 	bfqq = bic_to_bfqq(bic, false);
 	if (bfqq) {
+		hlist_del_init(&current->task_list_node);
 		bfq_release_process_ref(bfqd, bfqq);
 		bfqq = bfq_get_queue(bfqd, bio, BLK_RW_ASYNC, bic);
 		bic_set_bfqq(bic, bfqq, false);
@@ -5767,6 +5782,8 @@ static void bfq_init_bfqq(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 	INIT_HLIST_NODE(&bfqq->burst_list_node);
 	INIT_HLIST_NODE(&bfqq->woken_list_node);
 	INIT_HLIST_HEAD(&bfqq->woken_list);
+	INIT_HLIST_HEAD(&bfqq->task_list);
+	INIT_HLIST_NODE(&current->task_list_node);
 	BFQ_BUG_ON(!hlist_unhashed(&bfqq->burst_list_node));
 
 	bfqq->ref = 0;
@@ -5796,7 +5813,8 @@ static void bfq_init_bfqq(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 
 	bfq_mark_bfqq_IO_bound(bfqq);
 
-	bfqq->pid = pid;
+	/* add current task to task_list in bfqq */
+	hlist_add_head(&current->task_list_node, &bfqq->task_list);
 
 	/* Tentative initial value to trade off between thr and lat */
 	bfqq->max_budget = (2 * bfq_max_budget(bfqd)) / 3;
@@ -6842,11 +6860,13 @@ bfq_split_bfqq(struct bfq_io_cq *bic, struct bfq_queue *bfqq)
 	bfq_log_bfqq(bfqq->bfqd, bfqq, "splitting queue");
 
 	if (bfqq_process_refs(bfqq) == 1) {
-		bfqq->pid = current->pid;
 		bfq_clear_bfqq_coop(bfqq);
 		bfq_clear_bfqq_split_coop(bfqq);
 		return bfqq;
 	}
+
+	/* delete current task from queue iterating on task_list */
+	hlist_del_init(&current->task_list_node);
 
 	bic_set_bfqq(bic, NULL, 1);
 
@@ -7502,7 +7522,7 @@ static ssize_t bfq_weights_show(struct elevator_queue *e, char *page)
 	list_for_each_entry(bfqq, &bfqd->active_list, bfqq_list) {
 		num_char += sprintf(page + num_char,
 				    "pid%d: weight %hu, nr_queued %d %d, ",
-				    bfqq->pid,
+				    bfq_get_first_task_pid(bfqq),
 				    bfqq->entity.weight,
 				    bfqq->queued[0],
 				    bfqq->queued[1]);
@@ -7518,7 +7538,7 @@ static ssize_t bfq_weights_show(struct elevator_queue *e, char *page)
 	list_for_each_entry(bfqq, &bfqd->idle_list, bfqq_list) {
 		num_char += sprintf(page + num_char,
 				    "pid%d: weight %hu, dur %d/%u\n",
-				    bfqq->pid,
+				    bfq_get_first_task_pid(bfqq),
 				    bfqq->entity.weight,
 				    jiffies_to_msecs(jiffies -
 						     bfqq->last_wr_start_finish),
@@ -7846,6 +7866,18 @@ static void __exit bfq_exit(void)
 	blkcg_policy_unregister(&blkcg_policy_bfq);
 #endif
 	bfq_slab_kill();
+}
+
+pid_t bfq_get_first_task_pid(struct bfq_queue *bfqq)
+{
+	struct task_struct *item;
+
+	if ((&bfqq->task_list)->first != NULL)
+		return (hlist_entry_safe( (&bfqq->task_list)->first,
+					  typeof(*(item)), task_list_node))
+			->pid;
+
+	return -1;
 }
 
 module_init(bfq_init);
