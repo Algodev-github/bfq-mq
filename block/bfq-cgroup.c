@@ -877,9 +877,11 @@ static void bfq_reparent_leaf_entity(struct bfq_data *bfqd,
 
 		if (!child_entity)
 			child_entity = child_sd->in_service_entity;
+		BFQ_BUG_ON(!child_entity);
 	}
 
 	bfqq = bfq_entity_to_bfqq(child_entity);
+	BFQ_BUG_ON(!bfqq);
 	bfq_bfqq_move(bfqd, bfqq, bfqd->root_group);
 }
 
