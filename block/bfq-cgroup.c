@@ -882,6 +882,7 @@ static void bfq_reparent_leaf_entity(struct bfq_data *bfqd,
 
 	bfqq = bfq_entity_to_bfqq(child_entity);
 	BFQ_BUG_ON(!bfqq);
+	BFQ_BUG_ON(!bfq_bfqq_busy(bfqq));
 	bfq_bfqq_move(bfqd, bfqq, bfqd->root_group);
 }
 
