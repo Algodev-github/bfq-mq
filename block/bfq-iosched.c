@@ -6631,16 +6631,26 @@ static void bfq_finish_requeue_request(struct request *rq)
 	 *
 	 * First, check whether rq has nothing to do with an elevator.
 	 */
-	if (unlikely(!(rq->rq_flags & RQF_ELVPRIV)))
+	if (unlikely(!(rq->rq_flags & RQF_ELVPRIV))) {
+#ifndef CONFIG_BFQ_MQ_NOLOG_BUG_ON
+		trace_printk("bfq_finish_requeue_request exiting %p no elv %p",
+			     rq, bfqq);
+#endif
 		return;
+	}
 
 	/*
 	 * rq either is not associated with any icq, or is an already
 	 * requeued request that has not (yet) been re-inserted into
 	 * a bfq_queue.
 	 */
-	if (!rq->elv.icq || !bfqq)
+	if (!rq->elv.icq || !bfqq) {
+#ifndef CONFIG_BFQ_MQ_NOLOG_BUG_ON
+		trace_printk("bfq_finish_requeue_request exiting %p %p %p",
+			     rq, rq->elv.icq, bfqq);
+#endif
 		return;
+	}
 
 	bic = RQ_BIC(rq);
 	BFQ_BUG_ON(!bic);
