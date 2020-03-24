@@ -2196,8 +2196,8 @@ static void bfq_add_request(struct request *rq)
 	bool interactive = false;
 	u64 now_ns = ktime_get_ns();
 
-	bfq_log_bfqq(bfqd, bfqq, "size %u %s",
-		     blk_rq_sectors(rq), rq_is_sync(rq) ? "S" : "A");
+	bfq_log_bfqq(bfqd, bfqq, "%p size %u %s",
+		     rq, blk_rq_sectors(rq), rq_is_sync(rq) ? "S" : "A");
 
 	if (bfqq->wr_coeff > 1) /* queue is being weight-raised */
 		bfq_log_bfqq(bfqd, bfqq,
@@ -2209,6 +2209,9 @@ static void bfq_add_request(struct request *rq)
 
 	bfqq->queued[rq_is_sync(rq)]++;
 	bfqd->queued++;
+	bfq_log_bfqq(bfqd, bfqq, "new in-bfqq[%d] %d, in-bfqd %d",
+		     rq_is_sync(rq), bfqq->queued[rq_is_sync(rq)],
+		     bfqd->queued);
 
 	BFQ_BUG_ON(!RQ_BFQQ(rq));
 	BFQ_BUG_ON(RQ_BFQQ(rq) != bfqq);
@@ -2445,8 +2448,12 @@ static void bfq_remove_request(struct request_queue *q,
 	if (rq->queuelist.prev != &rq->queuelist)
 		list_del_init(&rq->queuelist);
 	BFQ_BUG_ON(bfqq->queued[sync] == 0);
+	BFQ_BUG_ON(bfqd->queued == 0);
+
 	bfqq->queued[sync]--;
 	bfqd->queued--;
+	bfq_log_bfqq(bfqd, bfqq, "%p in-bfqq[%d] %d in-bfqd %d",
+		     rq, sync, bfqq->queued[sync], bfqd->queued);
 	elv_rb_del(&bfqq->sort_list, rq);
 
 	elv_rqhash_del(q, rq);
@@ -5270,11 +5277,26 @@ return_rq:
 
 static bool bfq_has_work(struct blk_mq_hw_ctx *hctx)
 {
+#ifndef CONFIG_BFQ_MQ_NOLOG_BUG_ON
+	unsigned long flags;
+	bool condition, acquired = false;
+#endif
 	struct bfq_data *bfqd = hctx->queue->elevator->elevator_data;
 
 	bfq_log(bfqd, "dispatch_non_empty %d busy_queues %d",
-		!list_empty_careful(&bfqd->dispatch), bfq_tot_busy_queues(bfqd) > 0);
+		!list_empty_careful(&bfqd->dispatch),
+		bfq_tot_busy_queues(bfqd) > 0);
 
+#ifndef CONFIG_BFQ_MQ_NOLOG_BUG_ON
+	if (!lock_is_held(&(bfqd->lock.dep_map))) {
+		spin_lock_irqsave(&bfqd->lock, flags);
+		acquired = true;
+	}
+	condition = bfq_tot_busy_queues(bfqd) <= 0 && bfqd->queued > 0;
+	if (acquired)
+		spin_unlock_irqrestore(&bfqd->lock, flags);
+	BFQ_BUG_ON(condition);
+#endif
 	/*
 	 * Avoiding lock: a race on bfqd->busy_queues should cause at
 	 * most a call to dispatch for nothing
