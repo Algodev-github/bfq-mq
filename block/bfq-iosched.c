@@ -5277,26 +5277,12 @@ return_rq:
 
 static bool bfq_has_work(struct blk_mq_hw_ctx *hctx)
 {
-#ifndef CONFIG_BFQ_MQ_NOLOG_BUG_ON
-	unsigned long flags;
-	bool condition, acquired = false;
-#endif
 	struct bfq_data *bfqd = hctx->queue->elevator->elevator_data;
 
 	bfq_log(bfqd, "dispatch_non_empty %d busy_queues %d",
 		!list_empty_careful(&bfqd->dispatch),
 		bfq_tot_busy_queues(bfqd) > 0);
 
-#ifndef CONFIG_BFQ_MQ_NOLOG_BUG_ON
-	if (!lock_is_held(&(bfqd->lock.dep_map))) {
-		spin_lock_irqsave(&bfqd->lock, flags);
-		acquired = true;
-	}
-	condition = bfq_tot_busy_queues(bfqd) <= 0 && bfqd->queued > 0;
-	if (acquired)
-		spin_unlock_irqrestore(&bfqd->lock, flags);
-	BFQ_BUG_ON(condition);
-#endif
 	/*
 	 * Avoiding lock: a race on bfqd->busy_queues should cause at
 	 * most a call to dispatch for nothing
@@ -5497,6 +5483,8 @@ static struct request *bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
 	idle_timer_disabled =
 		waiting_rq && !bfq_bfqq_wait_request(in_serv_queue);
 
+	BFQ_BUG_ON(bfq_tot_busy_queues(bfqd) <= 0 && bfqd->queued > 0);
+
 	spin_unlock_irq(&bfqd->lock);
 
 	bfq_update_dispatch_stats(hctx->queue, rq, in_serv_queue,
@@ -5657,6 +5645,7 @@ static void bfq_exit_icq_bfqq(struct bfq_io_cq *bic, bool is_sync)
 		bfqq->bic = NULL;
 		bfq_exit_bfqq(bfqd, bfqq);
 		bic_set_bfqq(bic, NULL, is_sync);
+		BFQ_BUG_ON(bfq_tot_busy_queues(bfqd) <= 0 && bfqd->queued > 0);
 		spin_unlock_irqrestore(&bfqd->lock, flags);
 	}
 }
@@ -6275,6 +6264,8 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 		bfqg_stats_update_legacy_io(q, rq);
 #endif
 	spin_lock_irq(&bfqd->lock);
+	BFQ_BUG_ON(bfq_tot_busy_queues(bfqd) <= 0 && bfqd->queued > 0);
+
 	if (blk_mq_sched_try_insert_merge(q, rq)) {
 		spin_unlock_irq(&bfqd->lock);
 		return;
@@ -6330,6 +6321,8 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 	 * merge).
 	 */
 	cmd_flags = rq->cmd_flags;
+
+	BFQ_BUG_ON(bfq_tot_busy_queues(bfqd) <= 0 && bfqd->queued > 0);
 
 	spin_unlock_irq(&bfqd->lock);
 
@@ -6779,6 +6772,8 @@ static void bfq_finish_requeue_request(struct request *rq)
 
 		bfq_completed_request(bfqq, bfqd);
 		bfq_finish_requeue_request_body(bfqq);
+
+		BFQ_BUG_ON(bfq_tot_busy_queues(bfqd) <= 0 && bfqd->queued > 0);
 
 		spin_unlock_irqrestore(&bfqd->lock, flags);
 	} else {
