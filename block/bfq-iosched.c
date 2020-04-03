@@ -1814,7 +1814,7 @@ static void bfq_bfqq_handle_idle_busy_switch(struct bfq_data *bfqd,
 			bfqd->bfq_slice_idle * 3;
 
 	bfq_log_bfqq(bfqd, bfqq,
-		     "bfq_add_request non-busy: "
+		     "non-busy: "
 		     "jiffies %lu, in_time %d, idle_long %d busyw %d "
 		     "wr_coeff %u",
 		     jiffies, arrived_in_time,
@@ -1854,7 +1854,6 @@ static void bfq_bfqq_handle_idle_busy_switch(struct bfq_data *bfqd,
 		  bfqq->bic && (*interactive || soft_rt)));
 
 	bfq_log_bfqq(bfqd, bfqq,
-		     "bfq_add_request: "
 		     "in_burst %d, "
 		     "soft_rt %d (next %lu), inter %d, bic %p",
 		     bfq_bfqq_in_large_burst(bfqq), soft_rt,
