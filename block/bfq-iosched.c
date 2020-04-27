@@ -5976,6 +5976,8 @@ bfq_update_io_seektime(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 			 * interactive weight raising).
 			 */
 			bfq_bfqq_end_wr(bfqq);
+			bfq_log_bfqq(bfqd, bfqq,
+				     "stopping soft_rt wr");
 		} else { /*
 			  * stopping soft_rt weight raising
 			  * while still in interactive period,
@@ -5984,6 +5986,8 @@ bfq_update_io_seektime(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 			  */
 			switch_back_to_interactive_wr(bfqq, bfqd);
 			bfqq->entity.prio_changed = 1;
+			bfq_log_bfqq(bfqd, bfqq,
+				     "back to interactive wr");
 		}
 	}
 }
