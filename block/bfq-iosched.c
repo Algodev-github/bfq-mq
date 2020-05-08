@@ -5184,6 +5184,8 @@ check_queue:
 					bfq_get_first_task_pid(new_bfqq));
 			bfqq = new_bfqq;
 		} else {
+			bfq_log_bfqq(bfqd, bfqq, "idling with %d busy queues",
+				     bfq_tot_busy_queues(bfqd));
 			bfqq = NULL;
 		}
 		goto keep_queue;
