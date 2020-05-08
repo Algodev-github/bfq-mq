@@ -5160,7 +5160,13 @@ check_queue:
 					      blocked_bfqq) <=
 			   bfq_bfqq_budget_left(blocked_bfqq)
 			) {
+			bfq_log_bfqq(bfqd, bfqq,
+				     "choosing directly the blocked queue %d",
+				     bfq_get_first_task_pid(blocked_bfqq));
+			BUG_ON(blocked_bfqq == bfqq);
 			bfqq = blocked_bfqq;
+			bfq_log_bfqq(bfqd, bfqq,
+				     "chosen directly this blocked queue");
 		} else if (!idling_boosts_thr_without_issues(bfqd, bfqq) &&
 			 (bfqq->wr_coeff == 1 || bfqd->wr_busy_queues > 1 ||
 			  !bfq_bfqq_has_short_ttime(bfqq))) {
