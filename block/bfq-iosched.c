@@ -5182,9 +5182,15 @@ check_queue:
 				bfq_log_bfqq(bfqd, bfqq,
 					"chosen the queue %d for injection",
 					bfq_get_first_task_pid(new_bfqq));
+			else
+				bfq_log_bfqq(bfqd, bfqq,
+			"idling with %d busy queues, as no injector found",
+					     bfq_tot_busy_queues(bfqd));
+
 			bfqq = new_bfqq;
 		} else {
-			bfq_log_bfqq(bfqd, bfqq, "idling with %d busy queues",
+			bfq_log_bfqq(bfqd, bfqq,
+			"idling with %d busy queues, intentionally",
 				     bfq_tot_busy_queues(bfqd));
 			bfqq = NULL;
 		}
