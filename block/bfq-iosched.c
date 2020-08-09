@@ -5738,7 +5738,8 @@ static void bfq_exit_bfqq(struct bfq_data *bfqd, struct bfq_queue *bfqq)
 
 	bfq_put_cooperator(bfqq);
 
-	hlist_del_init(&current->task_list_node);
+	if (!hlist_unhashed(&current->task_list_node))
+		hlist_del_init(&current->task_list_node);
 	bfq_release_process_ref(bfqd, bfqq);
 }
 
