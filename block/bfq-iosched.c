@@ -3947,6 +3947,8 @@ static bool idling_needed_for_service_guarantees(struct bfq_data *bfqd,
 	int tot_busy_queues = bfq_tot_busy_queues(bfqd);
 	bool asymmetric_scenario;
 
+	BFQ_BUG_ON(tot_busy_queues < 1);
+
 	/* No point in idling for bfqq if it won't get requests any longer */
 	if (unlikely(!bfqq_process_refs(bfqq)))
 		return false;
@@ -3963,7 +3965,7 @@ static bool idling_needed_for_service_guarantees(struct bfq_data *bfqd,
 		     "wr_coeff %d wr_busy %d busy %d asymmetric %d",
 		     bfqq->wr_coeff,
 		     bfqd->wr_busy_queues,
-		     bfq_tot_busy_queues(bfqd),
+		     tot_busy_queues,
 		     asymmetric_scenario);
 
 	return asymmetric_scenario;
