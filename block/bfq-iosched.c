@@ -1822,6 +1822,10 @@ static void bfq_bfqq_handle_idle_busy_switch(struct bfq_data *bfqd,
 		     bfq_bfqq_non_blocking_wait_rq(bfqq),
 		     old_wr_coeff);
 
+	bfq_log_bfqq(bfqd, bfqq,
+		     "new_weight %d weight %d",
+		     bfqq->entity.new_weight, bfqq->entity.weight);
+
 	BFQ_BUG_ON(bfqq->entity.budget < bfqq->entity.service);
 
 	BFQ_BUG_ON(bfqq == bfqd->in_service_queue);
