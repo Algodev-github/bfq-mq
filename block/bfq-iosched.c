@@ -2156,6 +2156,8 @@ static void bfq_check_waker(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 
 	if (bfqd->last_completed_rq_bfqq !=
 	    bfqq->tentative_waker_bfqq) {
+		BFQ_BUG_ON(bfqq->tentative_waker_bfqq &&
+			   bfqq->num_waker_detections == 0);
 		/*
 		 * First synchronization detected with a
 		 * candidate waker queue, or with a different
@@ -2164,12 +2166,32 @@ static void bfq_check_waker(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 		bfqq->tentative_waker_bfqq =
 			bfqd->last_completed_rq_bfqq;
 		bfqq->num_waker_detections = 1;
-	} else /* Same tentative waker queue detected again */
+
+		bfq_log_bfqq(bfqd, bfqq,
+			     "new tentative waker: %d",
+			     bfq_get_first_task_pid(
+				     bfqq->tentative_waker_bfqq));
+
+	} else { /* Same tentative waker queue detected again */
+		BFQ_BUG_ON(bfqq->num_waker_detections == 0);
 		bfqq->num_waker_detections++;
+		bfq_log_bfqq(bfqd, bfqq,
+			     "same tentative waker: %d (%d)",
+			     bfq_get_first_task_pid(
+				     bfqq->tentative_waker_bfqq),
+			     bfqq->num_waker_detections);
+	}
+
+	BFQ_BUG_ON(bfqq->num_waker_detections == 0);
+	BFQ_BUG_ON(bfqq->num_waker_detections > 3);
 
 	if (bfqq->num_waker_detections == 3) {
 		bfqq->waker_bfqq = bfqd->last_completed_rq_bfqq;
 		bfqq->tentative_waker_bfqq = NULL;
+
+		bfq_log_bfqq(bfqd, bfqq, "has waker set to %d",
+			     bfq_get_first_task_pid(
+				     bfqq->waker_bfqq));
 
 		/*
 		 * If the waker queue disappears, then
