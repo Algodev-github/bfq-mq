@@ -2078,6 +2078,10 @@ static void bfq_update_io_intensity(struct bfq_queue *bfqq, u64 now_ns)
 	else
 		bfq_mark_bfqq_IO_bound(bfqq);
 
+	bfq_log_bfqq(bfqq->bfqd, bfqq, "tot %llu idle %llu bound %d",
+		     tot_io_time, bfqq->tot_idle_time,
+		     bfq_bfqq_IO_bound(bfqq));
+
 	/*
 	 * Keep an observation window of at most 200 ms in the past
 	 * from now.
