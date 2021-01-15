@@ -6368,6 +6368,7 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 	trace_block_rq_insert(rq);
 
 	spin_lock_irq(&bfqd->lock);
+	// XXX next function also takes a lock on bfqq
 	bfqq = bfq_init_rq(rq);
 	BFQ_BUG_ON(!bfqq && !(at_head || blk_rq_is_passthrough(rq)));
 	BFQ_BUG_ON(bfqq && bic_to_bfqq(RQ_BIC(rq), rq_is_sync(rq)) != bfqq);
