@@ -3176,6 +3176,11 @@ bfq_merge_bfqqs(struct bfq_data *bfqd, struct bfq_io_cq *bic,
 		new_bfqq->waker_bfqq = bfqq->waker_bfqq;
 		new_bfqq->tentative_waker_bfqq = NULL;
 
+		bfq_log_bfqq(bfqd, new_bfqq, "inherits waker %d from bfq%d",
+			     bfq_get_first_task_pid(
+				     bfqq->waker_bfqq),
+			     bfq_get_first_task_pid(bfqq));
+
 		/*
 		 * If the waker queue disappears, then
 		 * new_bfqq->waker_bfqq must be reset. So insert
@@ -7154,6 +7159,7 @@ static struct bfq_queue *bfq_init_rq(struct request *rq)
 								 true, is_sync,
 								 NULL);
 				bfqq->waker_bfqq = old_bfqq->waker_bfqq;
+				BFQ_BUG_ON(bfqq->waker_bfqq == bfqq);
 				bfqq->tentative_waker_bfqq = NULL;
 
 				/*
@@ -7163,9 +7169,16 @@ static struct bfq_queue *bfq_init_rq(struct request *rq)
 				 * woken_list of the waker. See
 				 * bfq_check_waker for details.
 				 */
-				if (bfqq->waker_bfqq)
+				if (bfqq->waker_bfqq) {
 					hlist_add_head(&bfqq->woken_list_node,
 						       &bfqq->waker_bfqq->woken_list);
+					bfq_log_bfqq(bfqd, bfqq,
+						     "gets waker %d back from bfq%d",
+						     bfq_get_first_task_pid(
+							     bfqq->waker_bfqq),
+						     bfq_get_first_task_pid(old_bfqq));
+
+				}
 			} else
 				bfqq_already_existing = true;
 
