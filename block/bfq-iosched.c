@@ -6373,7 +6373,21 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 	BFQ_BUG_ON(!bfqq && !(at_head || blk_rq_is_passthrough(rq)));
 	BFQ_BUG_ON(bfqq && bic_to_bfqq(RQ_BIC(rq), rq_is_sync(rq)) != bfqq);
 
-	if (!bfqq || at_head || blk_rq_is_passthrough(rq)) {
+	/*
+	 * Additional case for putting rq directly into the dispatch
+	 * queue: the only active bfq_queues are bfqq and either its
+	 * waker bfq_queue or one of its woken bfq_queues. In this
+	 * case, there is no point in queueing rq in bfqq for
+	 * service. In fact, the in-service queue and bfqq agree on
+	 * serving this new I/O request as soon as possible.
+	 */
+	if (!bfqq ||
+	    (bfqq != bfqd->in_service_queue &&
+	     bfqd->in_service_queue != NULL &&
+	     bfq_tot_busy_queues(bfqd) == 1 + bfq_bfqq_busy(bfqq) &&
+	     (bfqq->waker_bfqq == bfqd->in_service_queue ||
+	      bfqd->in_service_queue->waker_bfqq == bfqq)) ||
+	    at_head || blk_rq_is_passthrough(rq)) {
 		if (at_head)
 			list_add(&rq->queuelist, &bfqd->dispatch);
 		else
