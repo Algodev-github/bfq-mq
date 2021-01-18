@@ -5654,6 +5654,8 @@ static void bfq_set_next_ioprio_data(struct bfq_queue *bfqq,
 	}
 
 	bfqq->entity.new_weight = bfq_ioprio_to_weight(bfqq->new_ioprio);
+	bfq_log_bfqq(bfqd, bfqq, "new_ioprio %d new_weight %d",
+		     bfqq->new_ioprio, bfqq->entity.new_weight);
 	bfqq->entity.prio_changed = 1;
 }
 
