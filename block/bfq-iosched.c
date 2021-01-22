@@ -1920,7 +1920,7 @@ static void bfq_bfqq_handle_idle_busy_switch(struct bfq_data *bfqd,
 
 	bfq_add_bfqq_busy(bfqd, bfqq);
 
-	if (bfqd->in_service_queue)
+	if (bfqd->in_service_queue) {
 		bfq_log_bfqq(bfqd, bfqq,
 			     "wants to preempt %d, higher %d, may preempt %d",
 			     bfqq_wants_to_preempt,
@@ -1929,7 +1929,10 @@ static void bfq_bfqq_handle_idle_busy_switch(struct bfq_data *bfqd,
 							     in_service_queue),
 			     next_queue_may_preempt(bfqd)
 			);
-	else
+		bfq_log_bfqq(bfqd, bfqq,
+			     "better_to_idle %d",
+			     bfq_better_to_idle(bfqd->in_service_queue));
+	} else
 		bfq_log_bfqq(bfqd, bfqq,
 			     "no queue in service");
 
