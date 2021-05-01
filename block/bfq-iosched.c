@@ -3060,10 +3060,12 @@ bfq_setup_cooperator(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 				if (!new_bfqq)
 					bfq_log_bfqq(bfqd, bfqq,
 					     "merging already occurred");
-				else
+				else {
+					BFQ_BUG_ON(stable_merge_bfqq == bfqq);
 					bfq_log_bfqq(bfqd, bfqq,
 						     "late stable merging with %p",
 						     new_bfqq);
+				}
 
 				bic->stably_merged = true;
 				if (new_bfqq && new_bfqq->bic)
