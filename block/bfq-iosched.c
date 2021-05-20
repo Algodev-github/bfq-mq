@@ -3088,6 +3088,8 @@ bfq_setup_cooperator(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 				struct bfq_queue *new_bfqq =
 					bfq_setup_merge(bfqq, stable_merge_bfqq);
 
+				BFQ_BUG_ON(bic_to_bfqq(bic, 1) != bfqq);
+
 				if (!new_bfqq)
 					bfq_log_bfqq(bfqd, bfqq,
 					     "merging already occurred");
@@ -6665,14 +6667,19 @@ static void bfq_rq_enqueued(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 /* returns true if it causes the idle timer to be disabled */
 static bool __bfq_insert_request(struct bfq_data *bfqd, struct request *rq)
 {
-	struct bfq_queue *bfqq = RQ_BFQQ(rq),
-		*new_bfqq = bfq_setup_cooperator(bfqd, bfqq, rq, true,
-						 RQ_BIC(rq));
+	struct bfq_queue *bfqq, *new_bfqq;
 	bool waiting, idle_timer_disabled = false;
+
+	bfqq = RQ_BFQQ(rq);
 	BFQ_BUG_ON(!bfqq);
 	BFQ_BUG_ON(bfqq->entity.weight == 0);
 	BFQ_BUG_ON(bfqq->entity.new_weight == 0);
+	BFQ_BUG_ON(bic_to_bfqq(RQ_BIC(rq), rq_is_sync(rq)) != bfqq);
+
+	new_bfqq = bfq_setup_cooperator(bfqd, bfqq, rq, true,
+						 RQ_BIC(rq));
 	BFQ_BUG_ON(new_bfqq == &bfqd->oom_bfqq);
+	BFQ_BUG_ON(bic_to_bfqq(RQ_BIC(rq), rq_is_sync(rq)) != bfqq);
 
 	assert_spin_locked(&bfqd->lock);
 	bfq_log_bfqq(bfqd, bfqq, "rq %p bfqq %p", rq, bfqq);
