@@ -2931,6 +2931,8 @@ bfq_setup_merge(struct bfq_queue *bfqq, struct bfq_queue *new_bfqq)
 	int process_refs, new_process_refs;
 	struct bfq_queue *__bfqq;
 
+	BFQ_BUG_ON(new_bfqq == bfqq);
+
 	/*
 	 * If there are no process references on the new_bfqq, then it is
 	 * unsafe to follow the ->new_bfqq chain as other bfqq's in the chain
@@ -6164,6 +6166,7 @@ bfq_do_early_stable_merge(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 	struct bfq_queue *new_bfqq =
 		bfq_setup_merge(bfqq, last_bfqq_created);
 
+	BFQ_BUG_ON(last_bfqq_created == bfqq);
 	if (!new_bfqq) {
 		bfq_log_bfqq(bfqd, bfqq, "no new_bfqq found for stable merging");
 		return bfqq;
@@ -6258,6 +6261,8 @@ static struct bfq_queue *bfq_do_or_sched_stable_merge(struct bfq_data *bfqd,
 		&bfqd->last_bfqq_created;
 
 	struct bfq_queue *last_bfqq_created = *source_bfqq;
+
+	BFQ_BUG_ON(last_bfqq_created == bfqq);
 
 	/*
 	 * If last_bfqq_created has not been set yet, then init it. If
@@ -6415,6 +6420,12 @@ out:
 	bfq_log_bfqq(bfqd, bfqq, "initial refs: %p, %d", bfqq, bfqq->ref);
 
 	if (bfqq != &bfqd->oom_bfqq && is_sync && !respawn) {
+		struct bfq_queue *last_bfqq_created = bfqq->entity.parent ?
+			bfqq->entity.parent->last_bfqq_created :
+			bfqd->last_bfqq_created;
+
+		BFQ_BUG_ON(last_bfqq_created == bfqq);
+
 		BFQ_BUG_ON(bfqq == bic_to_bfqq(bic, false));
 
 		bfqq = bfq_do_or_sched_stable_merge(bfqd, bfqq, bic);
