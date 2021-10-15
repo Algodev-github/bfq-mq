@@ -698,6 +698,12 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 
 	bfqg_and_blkg_put(bfqq_group(bfqq));
 
+	if (entity->parent &&
+	    entity->parent->last_bfqq_created == bfqq)
+		entity->parent->last_bfqq_created = NULL;
+	else if (bfqd->last_bfqq_created == bfqq)
+		bfqd->last_bfqq_created = NULL;
+
 	entity->parent = bfqg->my_entity;
 	entity->sched_data = &bfqg->sched_data;
 
