@@ -3300,9 +3300,10 @@ void bfq_release_process_ref(struct bfq_data *bfqd, struct bfq_queue *bfqq)
 		bfq_del_bfqq_busy(bfqd, bfqq, false);
 
 	if (bfqq->entity.parent &&
-	    bfqq->entity.parent->last_bfqq_created == bfqq)
+	    bfqq->entity.parent->last_bfqq_created == bfqq) {
 		bfqq->entity.parent->last_bfqq_created = NULL;
-	else if (bfqq->bfqd && bfqq->bfqd->last_bfqq_created == bfqq)
+		BFQ_BUG_ON(bfqq->bfqd && bfqq->bfqd->last_bfqq_created == bfqq);
+	} else if (bfqq->bfqd && bfqq->bfqd->last_bfqq_created == bfqq)
 		bfqq->bfqd->last_bfqq_created = NULL;
 
 	bfqq->proc_ref--;
